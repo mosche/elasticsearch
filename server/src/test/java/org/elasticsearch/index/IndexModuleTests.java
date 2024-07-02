@@ -85,6 +85,7 @@ import org.elasticsearch.indices.cluster.IndicesClusterStateService.AllocatedInd
 import org.elasticsearch.indices.fielddata.cache.IndicesFieldDataCache;
 import org.elasticsearch.indices.recovery.RecoveryState;
 import org.elasticsearch.plugins.IndexStorePlugin;
+import org.elasticsearch.plugins.internal.CommitSizeAccumulator;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.search.internal.ReaderContext;
 import org.elasticsearch.test.ClusterServiceUtils;
@@ -677,7 +678,8 @@ public class IndexModuleTests extends ESTestCase {
                 Store store,
                 long primaryTerm,
                 Engine.IndexCommitRef indexCommitRef,
-                Set<String> additionalFiles
+                Set<String> additionalFiles,
+                CommitSizeAccumulator sizeAccumulator
             ) {
                 lastAcquiredPrimaryTerm.set(primaryTerm);
                 lastAcquiredCommit.set(indexCommitRef);

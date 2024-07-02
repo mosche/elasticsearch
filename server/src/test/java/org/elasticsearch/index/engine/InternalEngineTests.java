@@ -129,6 +129,7 @@ import org.elasticsearch.index.translog.TranslogConfig;
 import org.elasticsearch.index.translog.TranslogDeletionPolicy;
 import org.elasticsearch.index.translog.TranslogOperationsUtils;
 import org.elasticsearch.indices.breaker.NoneCircuitBreakerService;
+import org.elasticsearch.plugins.internal.CommitSizeAccumulator;
 import org.elasticsearch.plugins.internal.DocumentSizeObserver;
 import org.elasticsearch.test.IndexSettingsModule;
 import org.elasticsearch.test.index.IndexVersionUtils;
@@ -7568,7 +7569,8 @@ public class InternalEngineTests extends EngineTestCase {
                 Store store,
                 long primaryTerm,
                 Engine.IndexCommitRef indexCommitRef,
-                Set<String> additionalFiles
+                Set<String> additionalFiles,
+                CommitSizeAccumulator sizeAccumulator
             ) {
                 assertNotNull(store);
                 assertTrue(store.hasReferences());

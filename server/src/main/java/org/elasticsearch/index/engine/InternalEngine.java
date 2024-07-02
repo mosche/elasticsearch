@@ -95,6 +95,7 @@ import org.elasticsearch.index.translog.TranslogConfig;
 import org.elasticsearch.index.translog.TranslogCorruptedException;
 import org.elasticsearch.index.translog.TranslogDeletionPolicy;
 import org.elasticsearch.index.translog.TranslogStats;
+import org.elasticsearch.plugins.internal.CommitSizeAccumulator;
 import org.elasticsearch.search.suggest.completion.CompletionStats;
 import org.elasticsearch.threadpool.ThreadPool;
 
@@ -375,6 +376,10 @@ public class InternalEngine extends Engine {
         );
     }
 
+    protected CommitSizeAccumulator commitSizeAccumulator() {
+        return CommitSizeAccumulator.EMPTY_INSTANCE;
+    }
+
     @Nullable
     private CombinedDeletionPolicy.CommitsListener newCommitsListener() {
         Engine.IndexCommitListener listener = engineConfig.getIndexCommitListener();
@@ -386,7 +391,7 @@ public class InternalEngine extends Engine {
                     final IndexCommitRef indexCommitRef = acquireIndexCommitRef(() -> commit);
                     var primaryTerm = config().getPrimaryTermSupplier().getAsLong();
                     assert indexCommitRef.getIndexCommit() == commit;
-                    wrappedListener.onNewCommit(shardId, store, primaryTerm, indexCommitRef, additionalFiles);
+                    wrappedListener.onNewCommit(shardId, store, primaryTerm, indexCommitRef, additionalFiles, commitSizeAccumulator());
                 }
 
                 @Override
@@ -407,7 +412,8 @@ public class InternalEngine extends Engine {
                 Store store,
                 long primaryTerm,
                 IndexCommitRef indexCommitRef,
-                Set<String> additionalFiles
+                Set<String> additionalFiles,
+                CommitSizeAccumulator commitSizeAccumulator
             ) {
                 final long nextGen = indexCommitRef.getIndexCommit().getGeneration();
                 final long prevGen = generation.getAndSet(nextGen);
@@ -418,7 +424,7 @@ public class InternalEngine extends Engine {
                         + prevGen
                         + " for shard "
                         + shardId;
-                listener.onNewCommit(shardId, store, primaryTerm, indexCommitRef, additionalFiles);
+                listener.onNewCommit(shardId, store, primaryTerm, indexCommitRef, additionalFiles, commitSizeAccumulator);
             }
 
             @Override
@@ -1254,6 +1260,7 @@ public class InternalEngine extends Engine {
                 }
                 indexResult.setTook(relativeTimeInNanosSupplier.getAsLong() - index.startTime());
                 indexResult.freeze();
+                onIndex(index, indexResult);
                 return indexResult;
             } finally {
                 releaseInFlightDocs(reservedDocs);
@@ -1271,6 +1278,9 @@ public class InternalEngine extends Engine {
             throw e;
         }
     }
+
+    /** Completion hook called while holding the uio lock. */
+    protected void onIndex(Index index, IndexResult result) {}
 
     protected final IndexingStrategy planIndexingAsNonPrimary(Index index) throws IOException {
         assert assertNonPrimaryOrigin(index);
@@ -1666,6 +1676,7 @@ public class InternalEngine extends Engine {
             }
             deleteResult.setTook(System.nanoTime() - delete.startTime());
             deleteResult.freeze();
+            onDelete(delete, deleteResult);
         } catch (RuntimeException | IOException e) {
             try {
                 maybeFailEngine("delete", e);
@@ -1679,6 +1690,9 @@ public class InternalEngine extends Engine {
         maybePruneDeletes();
         return deleteResult;
     }
+
+    /** Completion hook called while holding the uid lock. */
+    protected void onDelete(Delete delete, DeleteResult result) {}
 
     private Exception tryAcquireInFlightDocs(Operation operation, int addingDocs) {
         assert operation.origin() == Operation.Origin.PRIMARY : operation;
@@ -2208,6 +2222,7 @@ public class InternalEngine extends Engine {
                 )) {
                 ensureCanFlush();
                 Translog.Location commitLocation = getTranslogLastWriteLocation();
+                beforeFLush();
                 try {
                     translog.rollGeneration();
                     logger.trace("starting commit for flush; commitTranslog=true");
@@ -2300,6 +2315,10 @@ public class InternalEngine extends Engine {
             store.decRef();
         }
     }
+
+    protected void onPrepareCommit(long maxSeqNo) {}
+
+    protected void beforeFLush() {}
 
     protected void afterFlush(long generation) {}
 
@@ -2914,9 +2933,11 @@ public class InternalEngine extends Engine {
                 }
                 commitData.put(Engine.MIN_RETAINED_SEQNO, Long.toString(softDeletesPolicy.getMinRetainedSeqNo()));
                 commitData.put(ES_VERSION, IndexVersion.current().toString());
-                logger.trace("committing writer with commit data [{}]", commitData);
+                logger.info("committing writer with commit data [{}]", commitData);
                 return commitData.entrySet().iterator();
             });
+            long maxSeqNo = writer.prepareCommit();
+            onPrepareCommit(maxSeqNo);
             shouldPeriodicallyFlushAfterBigMerge.set(false);
             writer.commit();
         } catch (final Exception ex) {

@@ -81,6 +81,7 @@ import org.elasticsearch.index.shard.SparseVectorStats;
 import org.elasticsearch.index.store.Store;
 import org.elasticsearch.index.translog.Translog;
 import org.elasticsearch.index.translog.TranslogStats;
+import org.elasticsearch.plugins.internal.CommitSizeAccumulator;
 import org.elasticsearch.search.suggest.completion.CompletionStats;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.Transports;
@@ -367,8 +368,16 @@ public abstract class Engine implements Closeable {
          * @param primaryTerm     the shard's primary term value
          * @param indexCommitRef  a reference on the newly created index commit
          * @param additionalFiles the set of filenames that are added by the new commit
+         * @param sizeAccumulator accumulator tracking the summed delta size of a commit
          */
-        void onNewCommit(ShardId shardId, Store store, long primaryTerm, IndexCommitRef indexCommitRef, Set<String> additionalFiles);
+        void onNewCommit(
+            ShardId shardId,
+            Store store,
+            long primaryTerm,
+            IndexCommitRef indexCommitRef,
+            Set<String> additionalFiles,
+            CommitSizeAccumulator sizeAccumulator
+        );
 
         /**
          * This method is invoked after the policy deleted the given {@link IndexCommit}. A listener is never notified of a deleted commit

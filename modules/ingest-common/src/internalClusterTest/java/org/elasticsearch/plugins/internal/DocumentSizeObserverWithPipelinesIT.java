@@ -12,6 +12,7 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.ingest.PutPipelineRequest;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.bytes.BytesReference;
+import org.elasticsearch.index.engine.Engine;
 import org.elasticsearch.index.mapper.MapperService;
 import org.elasticsearch.ingest.common.IngestCommonPlugin;
 import org.elasticsearch.plugins.IngestPlugin;
@@ -26,6 +27,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 import static org.elasticsearch.xcontent.XContentFactory.jsonBuilder;
 import static org.hamcrest.Matchers.equalTo;
@@ -103,7 +105,7 @@ public class DocumentSizeObserverWithPipelinesIT extends ESIntegTestCase {
                 public DocumentSizeReporter newDocumentSizeReporter(
                     String indexName,
                     MapperService mapperService,
-                    DocumentSizeAccumulator documentSizeAccumulator
+                    Supplier<Engine.Searcher> searcherSupplier
                 ) {
                     return DocumentSizeReporter.EMPTY_INSTANCE;
                 }

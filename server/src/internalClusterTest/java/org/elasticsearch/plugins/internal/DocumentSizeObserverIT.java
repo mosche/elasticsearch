@@ -10,10 +10,10 @@ package org.elasticsearch.plugins.internal;
 
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.index.IndexSettings;
+import org.elasticsearch.index.engine.Engine;
 import org.elasticsearch.index.engine.EngineFactory;
 import org.elasticsearch.index.engine.InternalEngine;
 import org.elasticsearch.index.mapper.MapperService;
-import org.elasticsearch.index.mapper.ParsedDocument;
 import org.elasticsearch.plugins.EnginePlugin;
 import org.elasticsearch.plugins.IngestPlugin;
 import org.elasticsearch.plugins.Plugin;
@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 import static org.elasticsearch.xcontent.XContentFactory.cborBuilder;
 import static org.elasticsearch.xcontent.XContentFactory.jsonBuilder;
@@ -105,9 +106,9 @@ public class DocumentSizeObserverIT extends ESIntegTestCase {
                     DocumentSizeReporter documentParsingReporter = documentParsingProvider.newDocumentSizeReporter(
                         shardId.getIndexName(),
                         config().getMapperService(),
-                        DocumentSizeAccumulator.EMPTY_INSTANCE
+                        null
                     );
-                    documentParsingReporter.onIndexingCompleted(index.parsedDoc());
+                    documentParsingReporter.onIndex(index, result);
 
                     return result;
                 }
@@ -137,7 +138,7 @@ public class DocumentSizeObserverIT extends ESIntegTestCase {
                 public DocumentSizeReporter newDocumentSizeReporter(
                     String indexName,
                     MapperService mapperService,
-                    DocumentSizeAccumulator documentSizeAccumulator
+                    Supplier<Engine.Searcher> searcherSupplier
                 ) {
                     return new TestDocumentSizeReporter(indexName);
                 }
@@ -154,8 +155,8 @@ public class DocumentSizeObserverIT extends ESIntegTestCase {
         }
 
         @Override
-        public void onIndexingCompleted(ParsedDocument parsedDocument) {
-            DocumentSizeObserver documentSizeObserver = parsedDocument.getDocumentSizeObserver();
+        public void onIndex(Engine.Index index, Engine.IndexResult result) {
+            DocumentSizeObserver documentSizeObserver = index.parsedDoc().getDocumentSizeObserver();
             COUNTER.addAndGet(documentSizeObserver.normalisedBytesParsed());
             assertThat(indexName, equalTo(TEST_INDEX_NAME));
         }

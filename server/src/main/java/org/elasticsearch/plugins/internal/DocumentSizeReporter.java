@@ -8,10 +8,14 @@
 
 package org.elasticsearch.plugins.internal;
 
-import org.elasticsearch.index.mapper.ParsedDocument;
+import org.elasticsearch.index.engine.Engine;
 
 /**
  * An interface to allow performing an action when parsing and indexing has been completed
+ *
+ * FIXME Should this extend {@link org.elasticsearch.index.shard.IndexingOperationListener}?
+ * FIXME Should this be renamed to CommitSizeObserver?
+ * TODO Move to lib in stateless to simply development, no need to keep this in elasticsearch.
  */
 public interface DocumentSizeReporter {
     /**
@@ -23,10 +27,22 @@ public interface DocumentSizeReporter {
     /**
      * An action to be performed upon finished indexing.
      */
-    default void onParsingCompleted(ParsedDocument parsedDocument) {}
+    default void preIndex(Engine.Index index) {}
 
     /**
      * An action to be performed upon finished indexing.
      */
-    default void onIndexingCompleted(ParsedDocument parsedDocument) {}
+    default void onIndex(Engine.Index index, Engine.IndexResult result) {}
+
+    default void onDelete(Engine.Delete delete, Engine.DeleteResult result) {}
+
+    default void beforeFlush() {}
+
+    default void onPrepareCommit(long maxSeqNo) {}
+
+    default void afterFlush() {}
+
+    default CommitSizeAccumulator getCommitSizeAccumulator() {
+        return CommitSizeAccumulator.EMPTY_INSTANCE;
+    }
 }

@@ -8,7 +8,10 @@
 
 package org.elasticsearch.plugins.internal;
 
+import org.elasticsearch.index.engine.Engine;
 import org.elasticsearch.index.mapper.MapperService;
+
+import java.util.function.Supplier;
 
 /**
  * An interface to provide instances of document parsing observer and reporter
@@ -37,16 +40,8 @@ public interface DocumentParsingProvider {
     default DocumentSizeReporter newDocumentSizeReporter(
         String indexName,
         MapperService mapperService,
-        DocumentSizeAccumulator documentSizeAccumulator
+        Supplier<Engine.Searcher> searcherSupplier
     ) {
         return DocumentSizeReporter.EMPTY_INSTANCE;
     }
-
-    /**
-     * @return a new instance of DocumentSizeAccumulator
-     */
-    default DocumentSizeAccumulator createDocumentSizeAccumulator() {
-        return DocumentSizeAccumulator.EMPTY_INSTANCE;
-    }
-
 }
