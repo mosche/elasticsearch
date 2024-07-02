@@ -41,8 +41,12 @@ public abstract class AggregateFunction extends Function {
             Percentile.ENTRY,
             SpatialCentroid.ENTRY,
             Sum.ENTRY,
-            TopList.ENTRY,
-            Values.ENTRY
+            Top.ENTRY,
+            Values.ENTRY,
+            Rate.ENTRY,
+            // internal functions
+            ToPartial.ENTRY,
+            FromPartial.ENTRY
         );
     }
 
@@ -75,6 +79,14 @@ public abstract class AggregateFunction extends Function {
 
     public List<? extends Expression> parameters() {
         return parameters;
+    }
+
+    /**
+     * Returns the input expressions used in aggregation.
+     * Defaults to a list containing the only the input field.
+     */
+    public List<Expression> inputExpressions() {
+        return List.of(field);
     }
 
     @Override
