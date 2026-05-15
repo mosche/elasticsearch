@@ -110,18 +110,20 @@ public class ClusterStateSecretsListener implements ClusterStateListener {
                 @Override
                 public ClusterState execute(ClusterState currentState) {
                     logger.info("Adding obsolete [file_secure_settings_metadata] for testing");
-                    return ClusterState.builder(currentState).removeCustom(ClusterStateSecretsMetadata.TYPE).build();
-                }
-
-                @Override
-                public void onFailure(Exception e) {
-                    logger.warn("Failed to add obsolete [file_secure_settings_metadata]", e);
-                    requiresCleanup.set(true);
+                    return ClusterState.builder(currentState)
+                        .putCustom(ClusterStateSecretsMetadata.TYPE, ClusterStateSecretsMetadata.createSuccessful(0L))
+                        .build();
                 }
 
                 @Override
                 public void clusterStateProcessed(ClusterState initialState, ClusterState newState) {
                     logger.info("Added obsolete [file_secure_settings_metadata] for testing");
+                    requiresCleanup.set(true);
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    logger.warn("Failed to add obsolete [file_secure_settings_metadata]", e);
                     requiresCleanup.set(true);
                 }
             });
